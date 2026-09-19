@@ -1,0 +1,29 @@
+# 你的品牌預設值 —— 開新案時自動填進 job.yaml
+#
+# 這些東西每一案都一樣(公司名、責任聲明),但寫死在程式裡別人就沒法用。
+# 放這裡:`main.py new <案名>` 會把它們帶進新案子的 job.yaml,之後可逐案覆蓋。
+#
+# 不要把「某一個案子」的設定寫進來,那屬於 job.yaml。
+#    這裡只放「不管做誰的案子都一樣」的東西。
+
+# 製作單位名稱。用在片頭尾卡與浮水印的預設值。
+studio:
+  name_zh: ""          # 例:某某建築師事務所
+  name_en: ""          # 例:Someone Architects & Associates
+
+# 畫面最底部那行小字的著作權聲明(只疊在機位畫面上,不疊在字卡)。
+# 兩個都留空 = 不放聲明。
+disclaimer:
+  text_zh: ""
+  text_en: ""
+
+# 預設字型(檔名要在 fonts/ 裡真的存在)。
+# 換字型前先看 fonts/README.md:商業授權字型不能隨 repo 散布。
+fonts:
+  caption: NotoSansTC-Regular.otf   # 機位字幕
+  card: NotoSansTC-Bold.otf         # 片頭尾卡
+
+# 素材比例跟輸出不一致時怎麼處理:
+#   contain = 完整畫面、兩側留黑邊
+#   cover   = 裁切填滿、不留黑邊但會切到邊緣
+fit: contain

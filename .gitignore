@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+.pytest_cache/
+.ruff_cache/
+
+# Environment variables
+.env
+.env.*
+
+# Project data: footage, audio, and renders are not version-controlled
+jobs/*
+*.mp4
+*.mov
+*.MP4
+*.MOV
+*.mp3
+*.wav
+*.aac
+*.m4a
+
+# Exception: the synthetic demo project, which the tests use as a fixture (inputs only)
+!jobs/_demo/
+!jobs/_demo/**
+jobs/_demo/output/
+
+# Temporary media created by the tests
+tests/_work/
+
+# macOS
+.DS_Store
+
+# Per-user brand settings (copy brand.example.yaml to brand.yaml)
+brand.yaml

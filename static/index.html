@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VideoMaker Studio</title>
+<style>
+  :root {
+    --bg: #16181d; --panel: #1f2229; --panel2: #262a33; --line: #343945;
+    --text: #e8eaf0; --dim: #9aa1b0; --accent: #4d9fff; --ok: #3ecf8e; --warn: #ffb454;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif; font-size: 14px; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+           background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; }
+  select, button, input, textarea {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: inherit; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  #status { color: var(--dim); margin-left: auto; }
+  #status.busy { color: var(--warn); }
+  #status.ok { color: var(--ok); }
+  main { display: grid; grid-template-columns: 1fr 340px; gap: 14px; padding: 14px 16px; }
+  #left { min-width: 0; }
+  /* 外框鎖定影片長寬比,疊層才會與畫面像素對齊(不能讓影片在框內留黑邊) */
+  #vidwrap { position: relative; width: 100%; aspect-ratio: 16/9; max-width: calc(56vh * 1.7778);
+             margin: 0 auto; background: #000; border-radius: 8px; overflow: hidden; }
+  video { width: 100%; height: 100%; display: block; object-fit: contain; }
+  .vtabs { display: flex; gap: 8px; margin: 8px 0; align-items: center; color: var(--dim); }
+  .vtabs button.active { border-color: var(--accent); color: var(--accent); }
+  /* 時間軸 */
+  #timeline { display: flex; align-items: stretch; margin-top: 10px; height: 86px;
+              border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .seg { position: relative; min-width: 34px; border-right: 1px solid var(--line);
+         cursor: pointer; background-size: cover; background-position: center; }
+  .seg:hover { filter: brightness(1.2); }
+  .seg.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .seg .tag { position: absolute; left: 4px; top: 4px; background: rgba(0,0,0,.6);
+              padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .seg .dur { position: absolute; right: 4px; bottom: 3px; font-size: 11px;
+              background: rgba(0,0,0,.6); padding: 0 4px; border-radius: 4px; }
+  .seg.card-black { background: #000; } .seg.card-white { background: #ddd; }
+  .seg.card-white .tag { background: rgba(255,255,255,.75); color: #111; }
+  #transinfo { margin-top: 6px; color: var(--dim); font-size: 12px; }
+  /* 右欄 */
+  #editor { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+            padding: 14px; max-height: calc(100vh - 120px); overflow-y: auto; }
+  #editor h2 { font-size: 14px; margin: 0 0 10px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; color: var(--dim); font-size: 12px; margin-bottom: 3px; }
+  .field input, .field select, .field textarea { width: 100%; }
+  .row { display: flex; gap: 8px; } .row .field { flex: 1; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+  #savebar { position: sticky; bottom: 0; background: var(--panel); padding-top: 8px; }
+  #log { background: #0d0f12; border: 1px solid var(--line); border-radius: 8px;
+         padding: 10px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap;
+         max-height: 180px; overflow-y: auto; margin-top: 12px; color: var(--dim); }
+  .hint { color: var(--warn); font-size: 12px; margin-top: 6px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 VideoMaker Studio</h1>
+  <select id="jobsel"></select>
+  <button id="btn-preview" class="primary">▶ 產 480p 預覽</button>
+  <button id="btn-final">🎞 出 4K 成品</button>
+  <button id="btn-spec">📐 版面規格</button>
+  <button id="btn-fcpxml">⤴ 匯出 FCPXML</button>
+  <span id="status">—</span>
+</header>
+<main>
+  <div id="left">
+    <div id="vidwrap">
+      <video id="video" controls preload="metadata"></video>
+      <img id="composeimg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:none">
+      <img id="liveov" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none">
+      <span id="livetag" style="position:absolute;left:8px;top:8px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;display:none">即時預覽(未渲染)</span>
+      <span id="layouttag" style="position:absolute;left:8px;top:8px;background:var(--ok);color:#06251a;padding:2px 8px;border-radius:4px;font-size:12px;display:none">靜態排版(伺服器合成,所見即成品)</span>
+    </div>
+    <div class="vtabs">
+      <span>監看:</span>
+      <button id="tab-layout">🖼 靜態排版</button>
+      <button id="tab-preview">▶ 480p 預覽</button>
+      <button id="tab-final">▶ 4K 成品</button>
+      <span id="novideo" style="display:none">還沒有可播的版本——先按「產 480p 預覽」</span>
+    </div>
+    <div id="timeline"></div>
+    <div id="transinfo"></div>
+    <div id="musicpanel" style="display:none;margin-top:12px">
+      <div style="display:flex;align-items:center;gap:12px;color:var(--dim);font-size:12px;margin-bottom:4px">
+        <span>🎵 音樂波形——拖曳藍框移動音樂起點(藍框 = 影片用到的區段)</span>
+        <span id="mstartlabel"></span>
+        <label style="margin-left:auto">縮放 <input id="wavezoom" type="range" min="1" max="8" step="1" value="1" style="width:120px;vertical-align:middle"></label>
+      </div>
+      <div id="wavescroll" style="overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#0d0f12">
+        <div id="wavescale" style="position:relative;width:100%">
+          <img id="waveimg" style="width:100%;height:96px;display:block;user-select:none;-webkit-user-drag:none">
+          <div id="wavewin" style="position:absolute;top:0;bottom:0;border:2px solid var(--accent);background:rgba(77,159,255,.18);cursor:grab;touch-action:none"></div>
+        </div>
+      </div>
+      <div style="color:var(--dim);font-size:12px;margin-top:4px">拖完自動存檔;按「產 480p 預覽」套用——音樂類改動只重貼音軌,幾秒就好。</div>
+    </div>
+    <div id="log" style="display:none"></div>
+  </div>
+  <div id="editor"><h2>載入中…</h2></div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let job = null, spec = null, probe = [], thumbs = {}, segs = [], sel = -1, dirty = false;
+let hasPreview = false, hasFinal = false, videoKind = null, pollTimer = null;
+
+const api = async (path, opt) => {
+  const r = await fetch(path, opt);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json();
+};
+const enc = (n) => encodeURIComponent(n);
+
+async function init() {
+  const jobs = await api("/api/jobs");
+  const usable = jobs.filter(j => j.has_job);
+  $("jobsel").innerHTML = usable.map(j => `<option>${j.name}</option>`).join("");
+  $("jobsel").onchange = () => loadJob($("jobsel").value);
+  const last = localStorage.getItem("vm-job");
+  if (usable.length) loadJob(usable.some(j => j.name === last) ? last : usable[0].name);
+  else $("editor").innerHTML = "<h2>沒有案件</h2><p>先用 CLI:<code>uv run python main.py new 案名</code></p>";
+}
+
+async function loadJob(name) {
+  job = name; localStorage.setItem("vm-job", name);
+  $("jobsel").value = name;
+  const data = await api(`/api/jobs/${enc(name)}`);
+  spec = data.spec; probe = data.clips_probe; musicDur = data.music_duration;
+  hasPreview = data.has_preview; hasFinal = data.has_final;
+  sel = -1; dirty = false; hideOverlay(); if (layoutMode) setLayoutMode(false);
+  buildSegs(); drawTimeline(); drawEditor(); pickVideo(); initWave();
+  api(`/api/jobs/${enc(name)}/thumbs`, { method: "POST" })
+    .then(t => { thumbs = t; drawTimeline(); }).catch(() => {});
+}
+
+function buildSegs() {
+  segs = [];
+  spec.intro.forEach((c, i) => segs.push({ type: "card", card: c, group: "intro", gi: i, label: `片頭${i + 1}` }));
+  spec.clips.forEach((c, i) => {
+    const srcDur = (probe[i] && probe[i].duration) || 0;
+    const eff = Math.max((c.end ?? srcDur) - (c.start || 0), 0);
+    segs.push({ type: "clip", clip: c, idx: i + 1, srcDur, dur: eff, label: `機位${i + 1}` });
+  });
+  spec.outro.forEach((c, i) => segs.push({ type: "card", card: c, group: "outro", gi: i, label: `片尾${i + 1}` }));
+}
+const segDur = (s) => s.type === "card" ? (s.card.duration || 0) : (s.dur || 0);
+
+function drawTimeline() {
+  const total = segs.reduce((a, s) => a + segDur(s), 0) || 1;
+  $("timeline").innerHTML = "";
+  segs.forEach((s, i) => {
+    const el = document.createElement("div");
+    el.className = "seg" + (i === sel ? " selected" : "");
+    el.style.flexGrow = String(segDur(s) / total * 1000);
+    if (s.type === "card") el.classList.add(s.card.bg === "white" ? "card-white" : "card-black");
+    else if (thumbs[s.idx]) el.style.backgroundImage = `url(${thumbs[s.idx]})`;
+    el.innerHTML = `<span class="tag">${s.label}</span><span class="dur">${segDur(s).toFixed(1)}s</span>`;
+    // 點段落 = 進靜態排版模式(伺服器合成圖,永不跑位);要看動態按 ▶ 分頁
+    el.onclick = () => { sel = i; drawTimeline(); drawEditor(); setLayoutMode(true); };
+    $("timeline").appendChild(el);
+  });
+  const t = spec.transition;
+  const clean = total - t.duration * (segs.length - 1);
+  $("transinfo").textContent =
+    `全片約 ${clean.toFixed(1)} 秒 = ${segs.length} 段(${total.toFixed(1)}s)− ${segs.length - 1} 個 ${t.type === "fade" ? "交叉淡化" : "黑場"} 轉場 × ${t.duration}s。點任一段可編輯並跳到該時間點。`;
+  if (typeof updateWaveWin === "function" && musicDur) updateWaveWin();
+}
+
+function seekTo(i) {
+  const v = $("video");
+  if (!v.src || !videoKind) return;
+  let t = 0;
+  for (let k = 0; k < i; k++) t += segDur(segs[k]) - spec.transition.duration;
+  v.currentTime = Math.max(0, t + 0.05);
+}
+
+/* ---------- 編輯面板 ---------- */
+function field(label, html) { return `<div class="field"><label>${label}</label>${html}</div>`; }
+
+function drawEditor() {
+  let h = "";
+  const s = segs[sel];
+  if (s && s.type === "clip") {
+    const c = s.clip.caption || {};
+    h += `<h2>✏️ ${s.label}(${(s.dur || 0).toFixed(1)}s)</h2>`
+      + field("中文字幕", `<input id="f-zh" value="${(c.text_zh || "").replaceAll('"', "&quot;")}">`)
+      + field("英文字幕", `<input id="f-en" value="${(c.text_en || "").replaceAll('"', "&quot;")}">`)
+      + `<div class="row">`
+      + field("位置", `<select id="f-pos">
+          <option value="bottom_left"${c.position === "bottom_left" ? " selected" : ""}>左下</option>
+          <option value="bottom_right"${c.position === "bottom_right" ? " selected" : ""}>右下</option>
+          <option value="center"${c.position === "center" ? " selected" : ""}>中央</option></select>`)
+      + field("顏色", `<select id="f-color">
+          <option value="white"${c.color === "white" ? " selected" : ""}>白字</option>
+          <option value="black"${c.color === "black" ? " selected" : ""}>黑字</option></select>`)
+      + `</div><div class="row">`
+      + field("修剪起點(秒)", `<input id="f-start" type="number" step="0.5" min="0" value="${s.clip.start || 0}">`)
+      + field("修剪終點(留空=到尾)", `<input id="f-end" type="number" step="0.5" value="${s.clip.end ?? ""}">`)
+      + `</div>`
+      + `<div style="color:var(--dim);font-size:12px">素材原長 ${s.srcDur.toFixed(1)}s → 修剪後 ${s.dur.toFixed(1)}s(把某段變短/變長就改這裡)</div>`;
+  } else if (s && s.type === "card") {
+    h += `<h2>✏️ ${s.label}</h2>`
+      + `<div class="row">`
+      + field("秒數", `<input id="f-dur" type="number" step="0.5" min="1" value="${s.card.duration}">`)
+      + field("底色", `<select id="f-bg">
+          <option value="black"${s.card.bg === "black" ? " selected" : ""}>黑</option>
+          <option value="white"${s.card.bg === "white" ? " selected" : ""}>白</option></select>`)
+      + `</div>`;
+    if (s.card.image) {
+      h += field("整張字卡圖(清空改用文字排版)", `<input id="f-img" value="${s.card.image}">`)
+        + field("內容放大倍數(字卡太小就調大)", `<input id="f-zoom" type="number" step="0.5" min="1" max="4" value="${s.card.zoom || 1}">`);
+    } else {
+      h += field("文字(一行一句)", `<textarea id="f-lines" rows="4">${(s.card.lines || []).join("\n")}</textarea>`);
+    }
+  } else {
+    h += `<h2>🌐 全域設定(點時間軸可編輯個別段落)</h2>`;
+  }
+  h += `<hr><div class="row">`
+    + field("轉場", `<select id="g-ttype">
+        <option value="fade"${spec.transition.type === "fade" ? " selected" : ""}>交叉淡化</option>
+        <option value="black"${spec.transition.type === "black" ? " selected" : ""}>黑場過渡</option></select>`)
+    + field("轉場秒數", `<input id="g-tdur" type="number" step="0.1" min="0.2" value="${spec.transition.duration}">`)
+    + `</div><div class="row">`
+    + field("中文字級", `<input id="g-fzh" type="number" value="${spec.style.font_size_zh}">`)
+    + field("英文字級", `<input id="g-fen" type="number" value="${spec.style.font_size_en}">`)
+    + field("邊距", `<input id="g-margin" type="number" value="${spec.style.margin}">`)
+    + `</div>`
+    + field("中文字型(fonts/ 內檔名)", `<input id="g-font" value="${spec.style.font}">`)
+    + field("英文字型(留空 = 同中文)", `<input id="g-fonten" value="${spec.style.font_en || ""}">`)
+    + field("字幕陰影(白字黑影/黑字白影,防同色背景看不見)", `<select id="g-shadow">
+        <option value="0"${spec.style.shadow === 0 ? " selected" : ""}>無</option>
+        <option value="1"${spec.style.shadow === 1 ? " selected" : ""}>標準</option>
+        <option value="2"${spec.style.shadow === 2 ? " selected" : ""}>加強</option></select>`)
+    + `<hr><div style="color:var(--dim);font-size:12px;margin-bottom:6px">卡片字級(片頭/片尾;第一行中文=標題,英文行自動用英文字級)</div><div class="row">`
+    + field("標題", `<input id="g-ctitle" type="number" value="${spec.style.card_title_size ?? 40}">`)
+    + field("內文", `<input id="g-ctext" type="number" value="${spec.style.card_text_size ?? 34}">`)
+    + field("英文", `<input id="g-cen" type="number" value="${spec.style.card_en_size ?? 22}">`)
+    + `</div>`
+    + field("卡片字型(fonts/ 內檔名;留空 = 同中文字型)", `<input id="g-cfont" value="${spec.style.card_font || ""}">`)
+    + (spec.watermark ? `<div class="row">`
+      + field("浮水印高度(px @1080p)", `<input id="g-wmh" type="number" value="${spec.watermark.logo_height ?? 54}">`)
+      + field("浮水印顏色", `<select id="g-wmcolor">
+          <option value=""${!spec.watermark.color ? " selected" : ""}>LOGO 原色</option>
+          <option value="white"${spec.watermark.color === "white" ? " selected" : ""}>白</option>
+          <option value="black"${spec.watermark.color === "black" ? " selected" : ""}>黑</option></select>`)
+      + `</div>` : "")
+    + field("責任聲明・中文(留空=不顯示;疊在每個機位最底部)",
+        `<textarea id="g-dzh" rows="2">${(spec.disclaimer?.text_zh || "").replaceAll("<", "&lt;")}</textarea>`)
+    + field("責任聲明・英文", `<textarea id="g-den" rows="2">${(spec.disclaimer?.text_en || "").replaceAll("<", "&lt;")}</textarea>`)
+    + `<div class="row">`
+    + field("聲明中文字級", `<input id="g-dszh" type="number" value="${spec.disclaimer?.size_zh ?? 14}">`)
+    + field("聲明英文字級", `<input id="g-dsen" type="number" value="${spec.disclaimer?.size_en ?? 12}">`)
+    + `</div><div class="row">`
+    + field("音樂音量", `<input id="g-vol" type="number" step="0.1" min="0" value="${spec.audio.music_volume}">`)
+    + field("音樂起點(秒)", `<input id="g-mstart" type="number" step="1" min="0" value="${spec.audio.music_start || 0}">`)
+    + field("結尾淡出秒", `<input id="g-fade" type="number" step="0.5" min="0" value="${spec.audio.fade_out}">`)
+    + `</div>`
+    + `<div id="savebar"><button id="btn-save" class="primary" style="width:100%">💾 儲存設定</button>
+       <div class="hint" id="hint">已儲存。要看效果請重新「產 480p 預覽」。</div></div>`;
+  $("editor").innerHTML = h;
+  $("editor").querySelectorAll("input,select,textarea").forEach(
+    el => el.oninput = () => { dirty = true; layoutMode ? scheduleCompose() : scheduleOverlay(); }
+  );
+  $("btn-save").onclick = save;
+}
+
+/* ---------- 靜態排版模式:伺服器端把背景幀+文字合成單張圖,排版永不跑位 ---------- */
+let layoutMode = false, cpTimer = null, cpUrl = null, cpSeq = 0;
+function setLayoutMode(on) {
+  layoutMode = on;
+  $("tab-layout").classList.toggle("active", on);
+  if (on) {
+    $("video").pause(); $("video").style.display = "none"; hideOverlay();
+    $("tab-preview").classList.remove("active"); $("tab-final").classList.remove("active");
+    updateCompose();
+  } else {
+    $("video").style.display = "block";
+    $("composeimg").style.display = "none"; $("layouttag").style.display = "none";
+  }
+}
+function scheduleCompose() { clearTimeout(cpTimer); cpTimer = setTimeout(updateCompose, 350); }
+async function updateCompose() {
+  const s = segs[sel];
+  if (!s || !layoutMode) return;
+  collect();
+  const body = s.type === "clip"
+    ? { kind: "clip", index: s.idx, spec }
+    : { kind: "card", group: s.group, gindex: s.gi, spec };
+  const seq = ++cpSeq;
+  try {
+    const r = await fetch(`/api/jobs/${enc(job)}/compose`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!r.ok || seq !== cpSeq) return;
+    if (cpUrl) URL.revokeObjectURL(cpUrl);
+    cpUrl = URL.createObjectURL(await r.blob());
+    $("composeimg").src = cpUrl;
+    $("composeimg").style.display = "block";
+    $("layouttag").style.display = "inline";
+  } catch { /* 合成失敗就維持上一張 */ }
+}
+$("tab-layout").onclick = () => { if (segs[sel]) setLayoutMode(true); else setStatus("先點時間軸選一段", "busy"); };
+
+/* ---------- 即時疊層:改字幕/陰影/卡片,0.3 秒內直接看,不用渲染 ---------- */
+let ovTimer = null, ovUrl = null;
+function scheduleOverlay() { clearTimeout(ovTimer); ovTimer = setTimeout(updateOverlay, 300); }
+function hideOverlay() { $("liveov").style.display = "none"; $("livetag").style.display = "none"; }
+async function updateOverlay() {
+  const s = segs[sel];
+  if (!s) return hideOverlay();
+  collect();
+  const body = s.type === "clip"
+    ? { kind: "clip", index: s.idx, spec }
+    : { kind: "card", group: s.group, gindex: s.gi, spec };
+  try {
+    const r = await fetch(`/api/jobs/${enc(job)}/overlay`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!r.ok) return hideOverlay();
+    if (ovUrl) URL.revokeObjectURL(ovUrl);
+    ovUrl = URL.createObjectURL(await r.blob());
+    $("liveov").src = ovUrl;
+    $("liveov").style.display = "block";
+    $("livetag").style.display = "inline";
+  } catch { hideOverlay(); }
+}
+$("video").addEventListener("play", hideOverlay);
+// 外框比例跟著實際影片走,疊層才不會歪
+$("video").addEventListener("loadedmetadata", () => {
+  const v = $("video");
+  if (v.videoWidth) {
+    const ar = v.videoWidth / v.videoHeight;
+    $("vidwrap").style.aspectRatio = `${v.videoWidth} / ${v.videoHeight}`;
+    $("vidwrap").style.maxWidth = `calc(56vh * ${ar.toFixed(4)})`;
+  }
+});
+
+/* ---------- 音樂波形:拖藍框調起點 ---------- */
+let musicDur = null, waveDrag = null;
+function videoLen() {
+  const total = segs.reduce((a, s) => a + segDur(s), 0);
+  return Math.max(total - spec.transition.duration * (segs.length - 1), 1);
+}
+function initWave() {
+  if (!musicDur) { $("musicpanel").style.display = "none"; return; }
+  $("musicpanel").style.display = "block";
+  $("waveimg").src = `/api/jobs/${enc(job)}/waveform?v=${Date.now()}`;
+  updateWaveWin();
+}
+function updateWaveWin() {
+  if (!musicDur) return;
+  const used = Math.min(videoLen(), musicDur);
+  const maxStart = Math.max(musicDur - used, 0);
+  const start = Math.min(spec.audio.music_start || 0, maxStart);
+  $("wavewin").style.left = (start / musicDur * 100) + "%";
+  $("wavewin").style.width = (used / musicDur * 100) + "%";
+  $("mstartlabel").textContent =
+    `起點 ${start.toFixed(1)}s|使用 ${used.toFixed(1)}s / 全長 ${musicDur.toFixed(0)}s`;
+}
+$("wavezoom").oninput = () => { $("wavescale").style.width = ($("wavezoom").value * 100) + "%"; };
+$("wavewin").addEventListener("pointerdown", (e) => {
+  waveDrag = { x: e.clientX, base: spec.audio.music_start || 0 };
+  $("wavewin").setPointerCapture(e.pointerId);
+  $("wavewin").style.cursor = "grabbing";
+});
+$("wavewin").addEventListener("pointermove", (e) => {
+  if (!waveDrag || !musicDur) return;
+  const pxWidth = $("wavescale").clientWidth;
+  const dSec = (e.clientX - waveDrag.x) / pxWidth * musicDur;
+  const maxStart = Math.max(musicDur - Math.min(videoLen(), musicDur), 0);
+  spec.audio.music_start = Math.round(Math.min(Math.max(waveDrag.base + dSec, 0), maxStart) * 10) / 10;
+  const f = $("g-mstart"); if (f) f.value = spec.audio.music_start;
+  updateWaveWin();
+});
+$("wavewin").addEventListener("pointerup", async (e) => {
+  if (!waveDrag) return;
+  waveDrag = null;
+  $("wavewin").style.cursor = "grab";
+  dirty = true;
+  await save();
+  setStatus(`音樂起點 ${spec.audio.music_start}s 已存,按「產 480p 預覽」試聽(幾秒)`, "ok");
+});
+// 點波形空白處:把使用區段中心移到點擊點
+$("wavescale").addEventListener("click", (e) => {
+  if (!musicDur || e.target === $("wavewin")) return;
+  const rect = $("wavescale").getBoundingClientRect();
+  const sec = (e.clientX - rect.left) / rect.width * musicDur;
+  const used = Math.min(videoLen(), musicDur);
+  const maxStart = Math.max(musicDur - used, 0);
+  spec.audio.music_start = Math.round(Math.min(Math.max(sec - used / 2, 0), maxStart) * 10) / 10;
+  const f = $("g-mstart"); if (f) f.value = spec.audio.music_start;
+  dirty = true;
+  updateWaveWin();
+  save();
+});
+
+function collect() {
+  const s = segs[sel];
+  if (s && s.type === "clip") {
+    const c = s.clip.caption || (s.clip.caption = {});
+    c.text_zh = $("f-zh").value; c.text_en = $("f-en").value;
+    c.position = $("f-pos").value; c.color = $("f-color").value;
+    s.clip.start = parseFloat($("f-start").value) || 0;
+    s.clip.end = $("f-end").value === "" ? null : parseFloat($("f-end").value);
+  } else if (s && s.type === "card") {
+    s.card.duration = parseFloat($("f-dur").value) || s.card.duration;
+    s.card.bg = $("f-bg").value;
+    if ($("f-img")) s.card.image = $("f-img").value || null;
+    if ($("f-zoom")) s.card.zoom = parseFloat($("f-zoom").value) || 1;
+    if ($("f-lines")) s.card.lines = $("f-lines").value.split("\n").filter(x => x.trim());
+  }
+  spec.transition.type = $("g-ttype").value;
+  spec.transition.duration = parseFloat($("g-tdur").value) || 1;
+  spec.style.font_size_zh = parseInt($("g-fzh").value) || 32;
+  spec.style.font_size_en = parseInt($("g-fen").value) || 16;
+  spec.style.margin = parseInt($("g-margin").value) || 60;
+  spec.style.font = $("g-font").value;
+  spec.style.font_en = $("g-fonten").value || null;
+  spec.style.shadow = parseInt($("g-shadow").value);
+  spec.style.card_title_size = parseInt($("g-ctitle").value) || 40;
+  spec.style.card_text_size = parseInt($("g-ctext").value) || 34;
+  spec.style.card_en_size = parseInt($("g-cen").value) || 22;
+  spec.style.card_font = $("g-cfont").value || null;
+  if (spec.watermark && $("g-wmh")) {
+    spec.watermark.logo_height = parseInt($("g-wmh").value) || 54;
+    spec.watermark.color = $("g-wmcolor").value || null;
+  }
+  const dzh = $("g-dzh").value.trim(), den = $("g-den").value.trim();
+  if (dzh || den) {
+    spec.disclaimer = Object.assign(spec.disclaimer || {}, {
+      text_zh: dzh, text_en: den,
+      size_zh: parseInt($("g-dszh").value) || 14,
+      size_en: parseInt($("g-dsen").value) || 12,
+    });
+  } else spec.disclaimer = null;
+  spec.audio.music_volume = parseFloat($("g-vol").value);
+  spec.audio.music_start = parseFloat($("g-mstart").value) || 0;
+  spec.audio.fade_out = parseFloat($("g-fade").value);
+}
+
+async function save() {
+  collect();
+  try {
+    await api(`/api/jobs/${enc(job)}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(spec),
+    });
+    dirty = false; $("hint").style.display = "block";
+    buildSegs(); drawTimeline();
+    setStatus("設定已儲存", "ok");
+  } catch (e) { setStatus("儲存失敗:" + e.message, "busy"); }
+}
+
+/* ---------- 影片來源 ---------- */
+function pickVideo() {
+  if (hasPreview) setVideo("preview");
+  else if (hasFinal) setVideo("final");
+  else { videoKind = null; $("video").removeAttribute("src"); $("novideo").style.display = "inline"; }
+  $("tab-preview").disabled = !hasPreview; $("tab-final").disabled = !hasFinal;
+}
+function setVideo(kind) {
+  if (layoutMode) setLayoutMode(false);
+  videoKind = kind; $("novideo").style.display = "none";
+  $("video").src = `/files/${enc(job)}/output/${kind}.mp4?v=${Date.now()}`;
+  $("tab-preview").classList.toggle("active", kind === "preview");
+  $("tab-final").classList.toggle("active", kind === "final");
+}
+$("tab-preview").onclick = () => setVideo("preview");
+$("tab-final").onclick = () => setVideo("final");
+
+/* ---------- 渲染 ---------- */
+function setStatus(t, cls) { $("status").textContent = t; $("status").className = cls || ""; }
+
+async function startRender(preview) {
+  if (dirty) await save();
+  try {
+    await api(`/api/jobs/${enc(job)}/render`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preview }),
+    });
+    setStatus(preview ? "渲染 480p 預覽中…" : "渲染 4K 成品中…", "busy");
+    $("btn-preview").disabled = $("btn-final").disabled = true;
+    $("log").style.display = "block";
+    poll();
+  } catch (e) { setStatus(e.message, "busy"); }
+}
+function poll() {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(async () => {
+    const st = await api(`/api/jobs/${enc(job)}/render/status`);
+    $("log").textContent = st.log || "";
+    $("log").scrollTop = $("log").scrollHeight;
+    if (st.running) return poll();
+    $("btn-preview").disabled = $("btn-final").disabled = false;
+    hasPreview = st.has_preview; hasFinal = st.has_final;
+    if (st.returncode === 0) {
+      setStatus("✅ 渲染完成", "ok");
+      setVideo(st.kind === "preview" ? "preview" : "final");
+      $("tab-preview").disabled = !hasPreview; $("tab-final").disabled = !hasFinal;
+    } else setStatus("❌ 渲染失敗,看下方 log", "busy");
+  }, 2000);
+}
+$("btn-preview").onclick = () => startRender(true);
+$("btn-final").onclick = () => startRender(false);
+$("btn-spec").onclick = async () => {
+  if (dirty) await save();
+  window.open(`/static/specsheet.html?job=${enc(job)}`, "_blank");
+};
+$("btn-fcpxml").onclick = async () => {
+  if (dirty) await save();
+  try {
+    const r = await api(`/api/jobs/${enc(job)}/export-fcpxml`, { method: "POST" });
+    setStatus("已匯出 FCPXML", "ok");
+    window.open(r.url, "_blank");
+  } catch (e) { setStatus("匯出失敗:" + e.message, "busy"); }
+};
+
+init();
+</script>
+</body>
+</html>

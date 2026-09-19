@@ -1,0 +1,27 @@
+[project]
+name = "videomaker"
+version = "0.1.0"
+description = "建築案 Lumion 走察影片自動化後製管線"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.140.1",
+    "pillow>=12.3.0",
+    "pyyaml>=6.0.3",
+    "uvicorn>=0.51.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "numpy>=2.4.6",
+    "playwright>=1.61.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100

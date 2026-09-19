@@ -1,0 +1,98 @@
+# job.yaml 範例(schema 權威:videomaker/spec.py)
+# 這個檔就是「微調介面」:parse 產生後可手改任何欄位再 render。
+# 內容是虛構的示範案(同 jobs/_demo),照著改成你自己的案子即可。
+project: 範例縣立圖書館新建工程
+
+output:
+  path: output/final.mp4
+  resolution: auto        # auto = 取第一支 clip;或 "1920x1080"
+  fps: auto               # auto 或數字
+  fit: contain            # 素材比例跟輸出不同時:contain 留黑邊(素材完整)/ cover 裁切填滿
+
+style:
+  font: NotoSansTC-Regular.otf   # fonts/ 內檔名(或字型檔絕對路徑);換字型就丟檔進 fonts/ 改這行
+  # font_en: NotoSansTC-Regular.otf  # 英文字幕想用不同字型才設;不設 = 跟中文同一套
+  font_size_zh: 32        # 中文字級(px,以 1080p 為基準自動縮放;與浮水印中文同級)
+  font_size_en: 16        # 英文字級——英文是輔助,明顯小於中文(與浮水印英文同級)
+  margin: 60              # 字幕距畫面邊界(px)
+  outline: 0              # 外框粗細,0 = 無
+  shadow: 1               # 陰影深度,0 = 無
+  card_title_size: 40     # 卡片第一行中文(標題)
+  card_text_size: 34      # 卡片其餘中文行
+  card_en_size: 22        # 卡片英文行(不含中文的行自動算英文)
+  card_font: NotoSansTC-Bold.otf  # 卡片專用字型;留空 = 同 style.font
+
+transition:
+  type: fade              # fade = 交叉淡化;black = 淡出黑再淡入
+  duration: 1.0           # 秒
+
+audio:
+  music: input/audio/bgm.mp3
+  music_volume: 1.0
+  music_start: 0.0        # 音樂從第幾秒開始取(跳過前奏;Studio 波形面板可拖)
+  fade_out: 3.0           # 結尾淡出秒數
+  keep_clip_audio: false  # 是否保留 clip 原聲(尚未支援)
+
+watermark:                # 每個機位左上角的常駐標示
+  logo: input/assets/logo.png
+  logo_height: 54         # LOGO 塊全高(px @1080p)
+  color: black            # 留空=LOGO 原色;white/black=整塊重上色(亮景用黑、暗景用白)
+  text_zh: 範例縣立圖書館新建工程
+  text_en: New Public Library, Fanli County
+
+disclaimer:               # 每個機位最底部的一行小字著作權聲明(不設就不顯示)
+  text_zh: 本影片由○○建築師事務所製作,內容受著作權保護……特此聲明。
+  text_en: This video is produced by …. Please do not record, broadcast, or use it for commercial purposes without permission.
+  size_zh: 14
+  size_en: 12
+
+intro:                    # 片頭卡,依序播放
+  - bg: black
+    duration: 1.5
+    lines:                # 行距自動:中文行間 28、中→英 20;英文行後再接中文 = 新區塊(空 72)
+      - 範例縣立圖書館新建工程                    # 第一行中文 = 標題(card_title_size)
+      - 新建工程委託規劃設計(暨後續擴充履約監造)  # 其餘中文行(card_text_size)
+      - New Public Library of Fanli County       # 英文行自動小字(card_en_size)
+      - 範例縣政府                                # 機關名(與上面隔一個大空隙)
+      - Fanli County Government
+  - bg: black
+    duration: 2.5
+    image: input/assets/公司字卡.png   # 業主給整張成品字卡就填這個(優先於 lines/logo,縮放鋪滿)
+    # 沒有整張字卡時,改用 lines + logo 讓管線自己排版:
+    # logo: input/assets/logo.png
+    # lines: [範例縣立圖書館新建工程, New Public Library]
+    # 多單位卡(工程單位 + 有 LOGO 的設計單位):文字在上、LOGO 塊在下,整組置中
+    # lines: [範例營造股份有限公司, Example Construction Co., Ltd.]
+    # logo: input/assets/watermark_事務所.png
+    # logo_pos: bottom      # top(預設)= LOGO 在文字上方
+    # logo_height: 55       # LOGO 塊高(px @1080p);約佔畫面寬 18%
+
+outro:                    # 片尾卡
+  - bg: white
+    duration: 1.5
+    lines:
+      - 範例縣立圖書館新建工程
+      - 新建工程委託規劃設計(暨後續擴充履約監造)
+      - 範例縣政府
+  - bg: white
+    duration: 2.5
+    logo: input/assets/logo.png
+    lines:
+      - 範例縣立圖書館新建工程
+      - New Public Library, Fanli County
+
+clips:                    # 檔名排序 = 機位順序
+  - file: input/clips/01.mp4
+    start: 0.0            # 修剪:從素材第幾秒開始用
+    end: null             # 修剪:用到第幾秒(null = 到尾)
+    caption:
+      position: bottom_left    # bottom_left | bottom_right | center
+      color: white             # white | black
+      text_zh: 校園入口至圖書館模擬圖
+      text_en: ""              # 業主沒給英文內文 → 留空待補,不捏造
+  - file: input/clips/02.mp4
+    caption:
+      position: bottom_right
+      color: white
+      text_zh: 圖書館正立面模擬圖
+      text_en: ""

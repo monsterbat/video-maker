@@ -1,0 +1,9 @@
+Copyright (c) 2026 SC Hsiao. All rights reserved.
+
+The source code in this repository is published for reference and review.
+No license is granted to use, copy, modify, or distribute it without the
+author's written permission.
+
+Fonts in the fonts/ directory are third-party works distributed under their
+own licenses. The bundled Noto Sans TC files are licensed under the SIL Open
+Font License 1.1. See fonts/README.md for details.

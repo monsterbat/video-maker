@@ -1,0 +1,181 @@
+project: 範例縣立圖書館新建工程
+output:
+  path: output/final.mp4
+  resolution: auto
+  fps: auto
+  fit: contain
+style:
+  font: NotoSansTC-Regular.otf
+  font_en: null
+  font_size_zh: 32
+  font_size_en: 16
+  margin: 60
+  outline: 0
+  shadow: 1
+  card_title_size: 40
+  card_text_size: 34
+  card_en_size: 22
+  card_font: NotoSansTC-Bold.otf
+transition:
+  type: fade
+  duration: 1.0
+audio:
+  music: input/audio/bgm.mp3
+  music_volume: 1.0
+  music_start: 0.0
+  fade_out: 3.0
+  keep_clip_audio: false
+watermark:
+  logo: input/assets/logo.png
+  logo_height: 54
+  color: null
+  text_zh: 範例縣立圖書館新建工程
+  text_en: ''
+disclaimer: null
+intro:
+- bg: black
+  duration: 1.5
+  lines:
+  - 範例縣立圖書館新建工程
+  - 新建工程委託規劃設計(暨後續擴充履約監造)
+  - 範例縣政府
+  logo: null
+  logo_pos: top
+  logo_height: 160
+  image: null
+  zoom: 1.0
+- bg: black
+  duration: 2.5
+  lines:
+  - 範例縣立圖書館新建工程
+  logo: input/assets/logo.png
+  logo_pos: top
+  logo_height: 160
+  image: null
+  zoom: 1.0
+outro:
+- bg: white
+  duration: 1.5
+  lines:
+  - 範例縣立圖書館新建工程
+  - 新建工程委託規劃設計(暨後續擴充履約監造)
+  - 範例縣政府
+  logo: null
+  logo_pos: top
+  logo_height: 160
+  image: null
+  zoom: 1.0
+- bg: white
+  duration: 2.5
+  lines:
+  - 範例縣立圖書館新建工程
+  logo: input/assets/logo.png
+  logo_pos: top
+  logo_height: 160
+  image: null
+  zoom: 1.0
+clips:
+- file: input/clips/01.mp4
+  caption:
+    position: bottom_left
+    color: white
+    text_zh: 校園入口至圖書館模擬圖
+    text_en: Simulated view from the campus entrance to the library
+  start: 0.0
+  end: null
+- file: input/clips/02.mp4
+  caption:
+    position: bottom_right
+    color: white
+    text_zh: 圖書館正立面模擬圖
+    text_en: Simulated front elevation of the library
+  start: 0.0
+  end: null
+- file: input/clips/03.mp4
+  caption:
+    position: bottom_right
+    color: white
+    text_zh: 前側遮陽格柵細節模擬圖
+    text_en: Simulated detail of the front sunshade louvers
+  start: 0.0
+  end: null
+- file: input/clips/04.mp4
+  caption:
+    position: bottom_left
+    color: white
+    text_zh: 入口門廊及停車場模擬圖
+    text_en: Simulated entrance porch and parking area
+  start: 0.0
+  end: null
+- file: input/clips/05.mp4
+  caption:
+    position: bottom_left
+    color: white
+    text_zh: 側立面及周邊環境模擬圖
+    text_en: Simulated side elevation and surrounding environment
+  start: 0.0
+  end: null
+- file: input/clips/06.mp4
+  caption:
+    position: bottom_left
+    color: black
+    text_zh: 後側庭園模擬圖
+    text_en: Simulated rear garden
+  start: 0.0
+  end: null
+- file: input/clips/07.mp4
+  caption:
+    position: bottom_right
+    color: black
+    text_zh: 中庭天井採光模擬圖
+    text_en: Simulated daylighting of the central atrium
+  start: 0.0
+  end: null
+- file: input/clips/08.mp4
+  caption:
+    position: bottom_right
+    color: black
+    text_zh: 圖書館背立面模擬圖
+    text_en: Simulated rear elevation of the library
+  start: 0.0
+  end: null
+- file: input/clips/09.mp4
+  caption:
+    position: bottom_left
+    color: black
+    text_zh: 門廳與閱覽區關係模擬圖
+    text_en: Simulated relationship between lobby and reading area
+  start: 0.0
+  end: null
+- file: input/clips/10.mp4
+  caption:
+    position: bottom_left
+    color: white
+    text_zh: 兒童閱覽室整體鳥瞰模擬圖
+    text_en: Simulated aerial view of the children's reading room
+  start: 0.0
+  end: null
+- file: input/clips/11.mp4
+  caption:
+    position: bottom_right
+    color: black
+    text_zh: 階梯閱覽區及書牆模擬圖
+    text_en: Simulated stepped reading area and book wall
+  start: 0.0
+  end: null
+- file: input/clips/12.mp4
+  caption:
+    position: bottom_right
+    color: black
+    text_zh: 自習室整體模擬圖
+    text_en: Simulated overall view of the study room
+  start: 0.0
+  end: null
+- file: input/clips/13.mp4
+  caption:
+    position: bottom_left
+    color: white
+    text_zh: 屋頂平台至中庭整體關係模擬圖
+    text_en: Simulated relationship from the roof deck to the atrium
+  start: 0.0
+  end: null

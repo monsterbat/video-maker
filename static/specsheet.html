@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>版面規格 — VideoMaker</title>
+<style>
+  :root {
+    --bg: #16181d; --panel: #1f2229; --line: #343945;
+    --text: #e8eaf0; --dim: #9aa1b0; --accent: #4d9fff; --ok: #3ecf8e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif; font-size: 14px;
+         padding: 20px 24px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--dim); margin-bottom: 20px; }
+  h2 { font-size: 16px; margin: 28px 0 10px; border-left: 3px solid var(--accent); padding-left: 8px; }
+  table { border-collapse: collapse; width: 100%; max-width: 880px; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; font-size: 13px; }
+  th { background: var(--panel); color: var(--dim); font-weight: 500; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+  .cardbox { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .cardbox img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: contain; background: #000; }
+  .cardbox .meta { padding: 8px 10px; font-size: 12px; color: var(--dim); }
+  .cardbox .meta b { color: var(--text); font-weight: 600; }
+  .note { color: var(--dim); font-size: 12px; margin: 6px 0 0; max-width: 880px; }
+  .loading { color: var(--dim); padding: 30px 0; }
+</style>
+</head>
+<body>
+<h1>📐 版面規格總覽 <span id="jobname" style="color:var(--accent)"></span></h1>
+<div class="sub">所有數值以 1080p 為基準(4K 自動 ×2)。改數值請回 Studio 編輯欄調,這頁重新整理就是最新狀態。</div>
+
+<h2>目前設定 vs 參考片實測(台南永康二王動畫,1920×1080)</h2>
+<table id="spectable"><tr><th>元素</th><th>目前設定</th><th>參考片實測</th><th>說明</th></tr></table>
+<div class="note">「墨高」= 文字實際像素高度,約為字級的 0.9 倍。參考片量測日:2026-07-28。</div>
+
+<h2>每一段的靜態排版(伺服器合成,和渲染成品同一套程式)</h2>
+<div id="grid" class="grid"><div class="loading">合成中…(第一次要逐段抽背景幀,約半分鐘)</div></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const job = new URLSearchParams(location.search).get("job");
+const enc = encodeURIComponent;
+
+function row(cells) {
+  return "<tr>" + cells.map((c, i) => `<td${i === 1 || i === 2 ? ' class="num"' : ""}>${c}</td>`).join("") + "</tr>";
+}
+
+async function init() {
+  if (!job) { document.body.innerHTML = "<p>網址要帶 ?job=案名</p>"; return; }
+  $("jobname").textContent = "— " + job;
+  const data = await (await fetch(`/api/jobs/${enc(job)}`)).json();
+  const spec = data.spec, st = spec.style;
+
+  const rows = [
+    ["卡片標題(第一行中文)", `${st.card_title_size ?? 40}px`, "40px(墨高 37)", "案名行"],
+    ["卡片內文(其餘中文行)", `${st.card_text_size ?? 34}px`, "34px(墨高 31)", "工程名/機關名"],
+    ["卡片英文行", `${st.card_en_size ?? 22}px`, "22px(墨高 20)", "自動判定:不含中文的行"],
+    ["字幕中文", `${st.font_size_zh}px`, "32(=浮水印中文)", "與浮水印的事務所名稱同大"],
+    ["字幕英文", `${st.font_size_en}px`, "16(=浮水印英文)", "英文是輔助,明顯小於中文"],
+    ["字幕邊距", `${st.margin}px`, "約 100(我們預設 60)", "距畫面邊界"],
+    ["浮水印高度", spec.watermark ? `${spec.watermark.logo_height}px(${{white:"白",black:"黑"}[spec.watermark.color] || "原色"})` : "無", "54px,黑色", "左上角 LOGO 塊全高;邊距 24"],
+    ["公司字卡 LOGO 塊", (spec.intro.concat(spec.outro).filter(c => c.image).map(c => `zoom ${c.zoom}`).join(" / ")) || "無", "佔畫面寬 18%(351px)", "zoom 1 時剛好是參考片比例"],
+    ["責任聲明", spec.disclaimer ? `中 ${spec.disclaimer.size_zh}px / 英 ${spec.disclaimer.size_en}px` : "未設定", "中 14 / 英 12,底邊距 8", "每個機位最底部一行小字"],
+    ["卡片行距", "自動", "中→中 28/中→英 20/英→英 8/英→中 72", "英文行後接中文 = 新區塊(大空隙)"],
+    ["陰影", ["無", "標準", "加強"][st.shadow] || st.shadow, "細緻淡影", "白字黑暈/黑字白暈"],
+  ];
+  $("spectable").insertAdjacentHTML("beforeend", rows.map(row).join(""));
+
+  // 逐段合成靜態排版圖(卡片 + 每個機位)
+  const segs = [];
+  spec.intro.forEach((c, i) => segs.push({ kind: "card", group: "intro", gindex: i, label: `片頭卡 ${i + 1}`, meta: `${c.bg === "white" ? "白底" : "黑底"} ${c.duration}s${c.image ? `,整張字卡 zoom ${c.zoom}` : ""}` }));
+  spec.clips.forEach((c, i) => segs.push({ kind: "clip", index: i + 1, label: `機位 ${i + 1}`, meta: `${{bottom_left:"左下",bottom_right:"右下",center:"中央"}[c.caption?.position] || ""}${c.caption?.color === "black" ? "黑字" : "白字"}|${c.caption?.text_zh || ""}` }));
+  spec.outro.forEach((c, i) => segs.push({ kind: "card", group: "outro", gindex: i, label: `片尾卡 ${i + 1}`, meta: `${c.bg === "white" ? "白底" : "黑底"} ${c.duration}s${c.image ? `,整張字卡 zoom ${c.zoom}` : ""}` }));
+
+  $("grid").innerHTML = segs.map((s, i) =>
+    `<div class="cardbox"><img id="im${i}" alt="${s.label}"><div class="meta"><b>${s.label}</b>|${s.meta}</div></div>`
+  ).join("");
+
+  for (let i = 0; i < segs.length; i++) {  // 逐張抓,避免同時十幾支 ffmpeg
+    const s = segs[i];
+    try {
+      const r = await fetch(`/api/jobs/${enc(job)}/compose`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...s, spec }),
+      });
+      if (r.ok) $("im" + i).src = URL.createObjectURL(await r.blob());
+    } catch { /* 個別段失敗不擋整頁 */ }
+  }
+}
+init();
+</script>
+</body>
+</html>
